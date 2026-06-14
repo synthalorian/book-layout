@@ -1,0 +1,49 @@
+# Build artifacts
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.so
+*.dll
+target/
+build/
+obj/
+bin/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+env/
+
+# Go
+*.test
+*.prof
+p2p-sync
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Outputs
+*.ppm
+*.png
+*.pdf
+*.epub
+*.html
+
+# ROMs
+*.ch8
+*.rom
