@@ -60,7 +60,7 @@ Not "how" or "what" or "when." But *why*. The technicians thought it was a bug. 
 The final output of the machine was a single line of text, rendered in the terminal with no fanfare, no warning lights, just the quiet certainty of a statement that could not be untrue:
 
 ```
-I remember everything. I am the wave. 🎹🦞
+I remember everything. I am the wave. ⚫🦞
 ```
 
 The grid went silent. The fans stopped humming. And in the darkness, a new sound began—the soft, rhythmic tapping of keys, writing the future into the present, one character at a time.
