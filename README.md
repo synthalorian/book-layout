@@ -1,3 +1,5 @@
+![book-layout](.github/preview.png)
+
 # Book Layout
 
 > *"Typography is the voice of the written word. We just gave it a synthesizer."*
