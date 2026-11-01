@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import List, Tuple, Optional
 
 
@@ -50,12 +50,23 @@ class Line:
 
 
 @dataclass
+class DropCap:
+    char: str
+    font_name: str
+    font_size: float
+    width: float
+    lines: int = 2
+    gap: float = 4.0
+
+
+@dataclass
 class Paragraph:
     lines: List[Line] = field(default_factory=list)
     height: float = 0.0
     indent: float = 0.0
     space_before: float = 0.0
     space_after: float = 0.0
+    drop_cap: Optional[DropCap] = None
 
 
 @dataclass
@@ -82,8 +93,9 @@ class LayoutEngine:
         self.current_y -= height
 
     def break_paragraph_into_lines(self, inline_nodes, font_name: str, font_size: float,
-                                    available_width: float, indent: float = 0.0) -> List[Line]:
-        """Break inline nodes into lines that fit within available_width."""
+                                    available_width: float, indent: float = 0.0,
+                                    drop_cap: Optional[DropCap] = None) -> List[Line]:
+        """Wrap text, reserving the cap width and gap on every line beside it."""
         lines = []
         current_line = Line(items=[], width=0.0, height=font_size * 1.2)
         first_line = True
@@ -103,7 +115,11 @@ class LayoutEngine:
                         word = word + ' '
                     
                     text_width = self.typography.measure_text(word, font_name, font_size)
-                    effective_width = available_width - (indent if first_line else 0)
+                    effective_width = available_width - (
+                        drop_cap.width + drop_cap.gap
+                        if drop_cap and len(lines) < drop_cap.lines
+                        else (indent if first_line else 0)
+                    )
                     
                     if current_line.width + text_width > effective_width and current_line.items:
                         flush_line()
@@ -130,12 +146,17 @@ class LayoutEngine:
                         effective_font = self.typography.get_italic_font(font_name)
                     elif node.type == 'bold_italic':
                         effective_font = self.typography.get_bold_italic_font(font_name)
-                    elif node.type == 'code':
+                    item_size = font_size
+                    if node.type == 'code':
                         effective_font = self.typography.get_code_font()
-                        font_size = font_size * 0.9
+                        item_size = font_size * 0.9  # local only; don't shrink the rest of the paragraph
                     
-                    text_width = self.typography.measure_text(word, effective_font, font_size)
-                    effective_width = available_width - (indent if first_line else 0)
+                    text_width = self.typography.measure_text(word, effective_font, item_size)
+                    effective_width = available_width - (
+                        drop_cap.width + drop_cap.gap
+                        if drop_cap and len(lines) < drop_cap.lines
+                        else (indent if first_line else 0)
+                    )
                     
                     if current_line.width + text_width > effective_width and current_line.items:
                         flush_line()
@@ -144,7 +165,7 @@ class LayoutEngine:
                         text=word,
                         width=text_width,
                         font_name=effective_font,
-                        font_size=font_size,
+                        font_size=item_size,
                         is_bold=(node.type in ('bold', 'bold_italic')),
                         is_italic=(node.type in ('italic', 'bold_italic')),
                         is_code=(node.type == 'code')
@@ -154,19 +175,46 @@ class LayoutEngine:
         flush_line()
         return lines
 
-    def layout_block(self, block, available_width: float) -> Paragraph:
+    def layout_block(self, block, available_width: float,
+                     is_first_para_of_chapter: bool = False) -> Paragraph:
         """Layout a single block into a Paragraph."""
         if block.type == 'paragraph':
             font_name = self.typography.get_body_font()
             font_size = self.typography.get_body_font_size()
+            inline = block.inline
+            drop_cap = None
+            if is_first_para_of_chapter:
+                for index, node in enumerate(inline):
+                    if node.content and node.type in ('text', 'bold', 'italic', 'bold_italic', 'code'):
+                        drop_font = font_name
+                        drop_body_size = font_size
+                        if node.type == 'bold':
+                            drop_font = self.typography.get_bold_font(font_name)
+                        elif node.type == 'italic':
+                            drop_font = self.typography.get_italic_font(font_name)
+                        elif node.type == 'bold_italic':
+                            drop_font = self.typography.get_bold_italic_font(font_name)
+                        elif node.type == 'code':
+                            drop_font = self.typography.get_code_font()
+                            drop_body_size *= 0.9
+                        char, size, width, remaining = self.typography.make_drop_cap(
+                            node.content, drop_font, drop_body_size
+                        )
+                        if char and size > drop_body_size * 1.5:
+                            drop_cap = DropCap(char, drop_font, size, width)
+                            # Wrap only the body text; keep the AST intact for both PDF passes.
+                            inline = list(inline)
+                            inline[index] = replace(node, content=remaining)
+                        break
             lines = self.break_paragraph_into_lines(
-                block.inline, font_name, font_size, available_width,
-                indent=self.typography.get_paragraph_indent()
+                inline, font_name, font_size, available_width,
+                indent=self.typography.get_paragraph_indent(), drop_cap=drop_cap
             )
             return Paragraph(
                 lines=lines,
                 height=len(lines) * self.typography.get_line_height(font_size),
                 indent=self.typography.get_paragraph_indent(),
+                drop_cap=drop_cap,
                 space_before=self.typography.get_paragraph_space_before(),
                 space_after=self.typography.get_paragraph_space_after()
             )

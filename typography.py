@@ -34,9 +34,9 @@ class Typography:
             return self._cache[key]
 
         try:
-            font = pdfmetrics.getFont(font_name)
-            width = sum(font.charWidths.get(ord(c), font.defaultWidth) for c in text)
-            result = width * font_size / 1000.0
+            # stringWidth uses the font's real glyph widths (Type1 fonts have no
+            # charWidths dict, so the old lookup fell back to defaultWidth for every glyph)
+            result = pdfmetrics.stringWidth(text, font_name, font_size)
         except Exception:
             # Fallback: approximate width
             result = len(text) * font_size * 0.5
