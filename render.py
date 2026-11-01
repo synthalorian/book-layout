@@ -112,42 +112,17 @@ class PDFRenderer:
             ) if paragraph.lines else 0
             self.draw_code_background(x, y - total_height, max_width, total_height + line_height)
 
-        drop_cap_info = None
-        if is_first_para_of_chapter and paragraph.lines and paragraph.lines[0].items:
-            first_item = paragraph.lines[0].items[0]
-            if first_item.text:
-                char, drop_size, drop_width, remaining = self.typography.make_drop_cap(
-                    first_item.text, first_item.font_name, first_item.font_size
-                )
-                if char and drop_size > first_item.font_size * 1.5:
-                    drop_cap_info = (char, drop_size, drop_width, remaining)
-                    self._drop_cap_width = drop_width
-                    self._drop_cap_lines = 2  # Drop cap spans 2 lines
+        drop_cap = paragraph.drop_cap
+        if drop_cap:
+            self.draw_drop_cap(
+                drop_cap.char, x, y - drop_cap.font_size * 0.8,
+                drop_cap.font_name, drop_cap.font_size
+            )
 
         for i, line in enumerate(paragraph.lines):
             line_y = y - (i * line_height)
-
-            if drop_cap_info and i == 0:
-                char, drop_size, drop_width, remaining = drop_cap_info
-                self.draw_drop_cap(char, x, line_y - drop_size * 0.8, line.items[0].font_name, drop_size)
-                # Adjust first line to skip the drop cap character
-                if remaining or len(line.items) > 1:
-                    # Draw remaining text of first item and rest of line
-                    current_x = x + drop_width + 4
-                    for j, item in enumerate(line.items):
-                        if j == 0 and remaining:
-                            self.canvas.setFont(item.font_name, item.font_size)
-                            self.canvas.drawString(current_x, line_y, remaining)
-                            current_x += self.typography.measure_text(remaining, item.font_name, item.font_size)
-                        else:
-                            self.canvas.setFont(item.font_name, item.font_size)
-                            self.canvas.drawString(current_x, line_y, item.text)
-                            current_x += item.width
-                continue
-            elif drop_cap_info and i < self._drop_cap_lines:
-                # Indent these lines for drop cap
-                self.draw_text_line(line, x + self._drop_cap_width + 4, line_y)
-                continue
+            if drop_cap and i < drop_cap.lines:
+                self.draw_text_line(line, x + drop_cap.width + drop_cap.gap, line_y)
             else:
                 self.draw_text_line(line, x + paragraph.indent, line_y)
 
@@ -179,7 +154,10 @@ class PDFRenderer:
         first_para = True
         for block in chapter.children:
             layout_engine = LayoutEngine(self.geometry, self.typography)
-            paragraph = layout_engine.layout_block(block, self.geometry.text_width)
+            paragraph = layout_engine.layout_block(
+                block, self.geometry.text_width,
+                is_first_para_of_chapter=first_para
+            )
 
             # Check if we need a new page
             needed_height = paragraph.height + paragraph.space_before + paragraph.space_after
