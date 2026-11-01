@@ -130,11 +130,12 @@ class LayoutEngine:
                         effective_font = self.typography.get_italic_font(font_name)
                     elif node.type == 'bold_italic':
                         effective_font = self.typography.get_bold_italic_font(font_name)
-                    elif node.type == 'code':
+                    item_size = font_size
+                    if node.type == 'code':
                         effective_font = self.typography.get_code_font()
-                        font_size = font_size * 0.9
+                        item_size = font_size * 0.9  # local only; don't shrink the rest of the paragraph
                     
-                    text_width = self.typography.measure_text(word, effective_font, font_size)
+                    text_width = self.typography.measure_text(word, effective_font, item_size)
                     effective_width = available_width - (indent if first_line else 0)
                     
                     if current_line.width + text_width > effective_width and current_line.items:
@@ -144,7 +145,7 @@ class LayoutEngine:
                         text=word,
                         width=text_width,
                         font_name=effective_font,
-                        font_size=font_size,
+                        font_size=item_size,
                         is_bold=(node.type in ('bold', 'bold_italic')),
                         is_italic=(node.type in ('italic', 'bold_italic')),
                         is_code=(node.type == 'code')
