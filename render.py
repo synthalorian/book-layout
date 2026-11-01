@@ -237,8 +237,9 @@ class PDFRenderer:
         self.current_y = title_y - title_size - self.typography.get_heading_space_after(1)
 
         font_name = self.typography.get_body_font()
-        font_size = self.typography.get_body_font_size()
-        line_height = self.typography.get_line_height(font_size)
+        # ToC entries a step above body size so they stay legible
+        font_size = round(self.typography.get_body_font_size() * 1.3)
+        line_height = self.typography.get_line_height(font_size) * 1.25
 
         for entry_title, level, page_num in self.toc_entries:
             # Check if we need a new page
